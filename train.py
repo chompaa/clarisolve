@@ -1,65 +1,17 @@
-# import torch
-# from torch.utils.data import DataLoader
-# from torchvision import datasets, transforms
-# from pathlib import Path
-# from PIL import Image
-# import random
-# from matplotlib import pyplot as plt
-
-# DESIRED_WIDTH = 16
-# DESIRED_HEIGHT = 16
-
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# # path to the folder containing image data
-# data_path = Path("data")
-# training_path = data_path / "training"
-
-# image_path_list = list(training_path.glob("*.png"))
-
-
-# def transform_images(image_path_list):
-#   images = []
-
-#   # define the transformation to be applied to each image
-#   transform = transforms.Compose([
-#       transforms.Resize(size=(DESIRED_WIDTH, DESIRED_HEIGHT)),
-#       transforms.ToTensor(),
-#   ])
-
-#   for image_path in image_path_list:
-#       with Image.open(image_path) as image:
-#           image = transform(image)
-#           images.append(image)
-
-#   return images
-
-
-# for image in random.sample(transform_images(image_path_list), k=1):
-#   fig, ax = plt.subplots()
-
-#   # transform and plot image, permute changes shape to suit matplotlib
-#   # pytorch is [c, h, w] matplotlib is [h, w, c]
-#   ax.imshow(image.permute(1, 2, 0))
-#   ax.axis("off")
-  
-#   plt.show()
-
 import argparse
-import os
 import copy
+import os
 
 import torch
-from torch import nn
-import torch.optim as optim
 import torch.backends.cudnn as cudnn
+import torch.optim as optim
+from torch import nn
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm
 
+from dataset import EvalDataset, TrainDataset
 from srcnn import SRCNN
-from dataset import TrainDataset, EvalDataset
-from utils import AverageMeter, calc_psnr
-
+from utils import AverageMeter, calculate_psnr
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -86,19 +38,24 @@ if __name__ == "__main__":
 
     model = SRCNN().to(device)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam([
-        {"params": model.conv1.parameters()},
-        {"params": model.conv2.parameters()},
-        {"params": model.conv3.parameters(), "lr": args.lr * 0.1}
-    ], lr=args.lr)
+    optimizer = optim.Adam(
+        [
+            {"params": model.conv1.parameters()},
+            {"params": model.conv2.parameters()},
+            {"params": model.conv3.parameters(), "lr": args.lr * 0.1},
+        ],
+        lr=args.lr,
+    )
 
     train_dataset = TrainDataset(args.train_file)
-    train_dataloader = DataLoader(dataset=train_dataset,
-                                  batch_size=args.batch_size,
-                                  shuffle=True,
-                                  num_workers=args.num_workers,
-                                  pin_memory=True,
-                                  drop_last=True)
+    train_dataloader = DataLoader(
+        dataset=train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        drop_last=True,
+    )
     eval_dataset = EvalDataset(args.eval_file)
     eval_dataloader = DataLoader(dataset=eval_dataset, batch_size=1)
 
@@ -110,8 +67,10 @@ if __name__ == "__main__":
         model.train()
         epoch_losses = AverageMeter()
 
-        with tqdm(total=(len(train_dataset) - len(train_dataset) % args.batch_size)) as t:
-            t.set_description("epoch: {}/{}".format(epoch, args.num_epochs - 1))
+        with tqdm(
+            total=(len(train_dataset) - len(train_dataset) % args.batch_size)
+        ) as progress_bar:
+            progress_bar.set_description(f"epoch: {epoch}/{args.num_epochs - 1}")
 
             for data in train_dataloader:
                 inputs, labels = data
@@ -129,10 +88,13 @@ if __name__ == "__main__":
                 loss.backward()
                 optimizer.step()
 
-                t.set_postfix(loss="{:.6f}".format(epoch_losses.avg))
-                t.update(len(inputs))
+                progress_bar.set_postfix(loss=f"{epoch_losses.avg:.6f}")
+                progress_bar.update(len(inputs))
 
-        torch.save(model.state_dict(), os.path.join(args.outputs_dir, "epoch_{}.pth".format(epoch)))
+        torch.save(
+            model.state_dict(),
+            os.path.join(args.outputs_dir, "epoch_{epoch}.pth"),
+        )
 
         model.eval()
         epoch_psnr = AverageMeter()
@@ -146,14 +108,14 @@ if __name__ == "__main__":
             with torch.no_grad():
                 preds = model(inputs).clamp(0.0, 1.0)
 
-            epoch_psnr.update(calc_psnr(preds, labels), len(inputs))
+            epoch_psnr.update(calculate_psnr(preds, labels), len(inputs))
 
-        print("eval psnr: {:.2f}".format(epoch_psnr.avg))
+        print("eval psnr: f{epoch_psnr.avg:.2f}")
 
         if epoch_psnr.avg > best_psnr:
             best_epoch = epoch
             best_psnr = epoch_psnr.avg
             best_weights = copy.deepcopy(model.state_dict())
 
-    print("best epoch: {}, psnr: {:.2f}".format(best_epoch, best_psnr))
+    print(f"best epoch: {best_epoch}, psnr: {best_psnr:.2f}")
     torch.save(best_weights, os.path.join(args.outputs_dir, "best.pth"))
