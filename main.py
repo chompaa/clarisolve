@@ -122,13 +122,13 @@ class FileSelector(QGroupBox):
 
 
 class ImageSelector(QGroupBox):
-    WIDTH = 150
-    HEIGHT = 150
-
     image_path = abspath("./butterfly.png")
 
-    def __init__(self):
+    def __init__(self, image_width, image_height):
         super(QWidget, self).__init__()
+
+        self.image_width = image_width
+        self.image_height = image_height
 
         self.setTitle("Select Image")
 
@@ -143,7 +143,8 @@ class ImageSelector(QGroupBox):
 
         select_image = QPushButton("Choose File")
         select_image.clicked.connect(self.select_image)
-        select_image.setFixedWidth(self.WIDTH)
+        select_image.setFixedWidth(self.image_width)
+        select_image.setFixedHeight(self.image_height)
 
         layout.addWidget(self.display_image, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(select_image, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -154,7 +155,7 @@ class ImageSelector(QGroupBox):
     def set_image(self, path):
         pixmap = QPixmap(path)
         pixmap = pixmap.scaled(
-            QSize(self.WIDTH, self.HEIGHT),
+            QSize(self.image_width, self.image_height),
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
@@ -195,7 +196,7 @@ class MainWindow(QMainWindow):
             "PyTorch State Dictionary Files *.pth",
         )
         self.output_selector = FolderSelector("Output Folder", abspath("./output/"))
-        self.input_selector = ImageSelector()
+        self.input_selector = ImageSelector(150, 150)
 
         self.status = QLabel("Ready")
 
