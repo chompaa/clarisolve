@@ -4,8 +4,10 @@ import glob
 import h5py
 import numpy as np
 from PIL import Image
+from torch import Tensor
 from torchvision import transforms
 from torchvision.utils import save_image
+from torchvision.transforms import InterpolationMode
 
 from utils import convert_rgb_to_y
 
@@ -94,16 +96,16 @@ def resize(args):
                             int(image.height * args.scale),
                             int(image.width * args.scale),
                         ),
-                        interpolation=Image.BICUBIC,
+                        interpolation=InterpolationMode.BICUBIC,
                     ),
-                    transforms.ToTensor(),
                 ]
             )
 
-            image = transform(image)
+            # perform tensor conversion here for type hinting purposes
+            image_tensor = transforms.ToTensor()(transform(image))
             name = image_path.split("/")[-1].split(".")[0].split("\\")[-1]
 
-            save_image(image, f"{args.output_path}/{name}.png")
+            save_image(image_tensor, f"{args.output_path}/{name}.png")
 
 
 if __name__ == "__main__":

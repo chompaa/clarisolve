@@ -100,6 +100,8 @@ def calculate_psnr(image_1, image_2):
 
 
 class AverageMeter(object):
+    # taken from the PyTorch ImageNet example
+
     def __init__(self):
         self.reset()
 

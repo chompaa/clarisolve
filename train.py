@@ -15,15 +15,21 @@ from utils import AverageMeter, calculate_psnr
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train-file", type=str, required=True)
-    parser.add_argument("--eval-file", type=str, required=True)
-    parser.add_argument("--outputs-dir", type=str, required=True)
-    parser.add_argument("--scale", type=int, default=3)
-    parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--batch-size", type=int, default=16)
-    parser.add_argument("--num-epochs", type=int, default=400)
-    parser.add_argument("--num-workers", type=int, default=8)
-    parser.add_argument("--seed", type=int, default=123)
+    parser.add_argument(
+        "--train-file", type=str, required=True, help="training dataset"
+    )
+    parser.add_argument(
+        "--eval-file", type=str, required=True, help="evaluation dataset"
+    )
+    parser.add_argument(
+        "--outputs-dir", type=str, required=True, help="outputs directory"
+    )
+    parser.add_argument("--scale", type=int, default=3, help="super resolution scale")
+    parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
+    parser.add_argument("--batch-size", type=int, default=16, help="batch size")
+    parser.add_argument("--num-epochs", type=int, default=400, help="number of epochs")
+    parser.add_argument("--num-workers", type=int, default=8, help="number of workers")
+    parser.add_argument("--seed", type=int, default=123, help="seed")
     args = parser.parse_args()
 
     args.outputs_dir = os.path.join(args.outputs_dir, "x{}".format(args.scale))
