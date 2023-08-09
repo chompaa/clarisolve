@@ -9,10 +9,6 @@ from srcnn import SRCNN
 from utils import convert_rgb_to_ycbcr, convert_ycbcr_to_rgb, calculate_psnr
 
 
-def get_image_name_from_path(path):
-    return path.split("/")[-1].split("\\")[-1]
-
-
 def sisr(weights_file, output_folder, image_file, scale, set_status):
     cudnn.benchmark = True
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -80,7 +76,7 @@ def sisr(weights_file, output_folder, image_file, scale, set_status):
 
     set_status("Saving SRCNN image...")
 
-    output.save(f"{output_folder}{image_file.replace('.', f'_srcnn_x{scale}.')}")
+    output.save(f"{output_folder}{image_name.replace('.', f'_srcnn_x{scale}.')}")
 
     set_status(f"Done! PSNR: {psnr:.2f}")
 

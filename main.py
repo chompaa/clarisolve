@@ -144,7 +144,6 @@ class ImageSelector(QGroupBox):
         select_image = QPushButton("Choose File")
         select_image.clicked.connect(self.select_image)
         select_image.setFixedWidth(self.image_width)
-        select_image.setFixedHeight(self.image_height)
 
         layout.addWidget(self.display_image, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(select_image, alignment=Qt.AlignmentFlag.AlignCenter)
