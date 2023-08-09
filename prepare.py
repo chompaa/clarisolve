@@ -5,14 +5,13 @@ import h5py
 import numpy as np
 from PIL import Image
 from torch import Tensor
-from torchvision import transforms
-from torchvision.utils import save_image
-from torchvision.transforms import InterpolationMode
 
 from utils import convert_rgb_to_y
 
 
-def make_hr_lr_images(image_paths, scale, downscale):
+def make_hr_lr_images(
+    image_paths: str, scale: int, downscale: float
+) -> tuple[list[Tensor], list[Tensor]]:
     hr_images = []
     lr_images = []
 
@@ -50,23 +49,14 @@ def make_hr_lr_images(image_paths, scale, downscale):
     return hr_images, lr_images
 
 
-def downscale(image, scale):
-    transform = transforms.Compose(
-        [
-            transforms.Resize(
-                size=(
-                    int(image.height * scale),
-                    int(image.width * scale),
-                ),
-                interpolation=InterpolationMode.BICUBIC,
-            ),
-        ]
-    )
-
-    return
-
-
-def make_train_dataset(images_dir, output_dir, patch_size, stride, scale, downscale):
+def make_train_dataset(
+    images_dir: str,
+    output_dir: str,
+    patch_size: int,
+    stride: int,
+    scale: int,
+    downscale: float,
+):
     h5_file = h5py.File(output_dir, "w")
 
     lr_patches = []

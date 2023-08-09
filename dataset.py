@@ -8,7 +8,7 @@ class TrainDataset(Dataset):
         super(TrainDataset, self).__init__()
         self.h5_file = h5_file
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         with h5py.File(self.h5_file, "r") as dataset_file:
             return np.expand_dims(dataset_file["lr"][index] / 255.0, 0), np.expand_dims(
                 dataset_file["hr"][index] / 255.0, 0
@@ -24,7 +24,7 @@ class EvalDataset(Dataset):
         super(EvalDataset, self).__init__()
         self.h5_file = h5_file
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         with h5py.File(self.h5_file, "r") as dataset_file:
             return np.expand_dims(
                 dataset_file["lr"][str(index)][:, :] / 255.0, 0
