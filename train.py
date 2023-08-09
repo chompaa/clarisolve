@@ -92,7 +92,7 @@ def train(
 
         torch.save(
             model.state_dict(),
-            os.path.join(output_dir, "epoch_{epoch}.pth"),
+            os.path.join(output_dir, f"epoch_{epoch}.pth"),
         )
 
         model.eval()
@@ -109,7 +109,7 @@ def train(
 
             epoch_psnr.update(calculate_psnr(preds, labels), len(inputs))
 
-        print("eval psnr: f{epoch_psnr.avg:.2f}")
+        print(f"eval psnr: {epoch_psnr.avg:.2f}")
 
         if epoch_psnr.avg > best_psnr:
             best_epoch = epoch
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output-dir", type=str, required=True, help="output directory"
     )
-    parser.add_argument("--scale", type=int, default=3, help="super resolution scale")
+    parser.add_argument("--scale", type=int, default=2, help="super resolution scale")
     parser.add_argument("--learn-rate", type=float, default=1e-4, help="learning rate")
     parser.add_argument("--batch-size", type=int, default=16, help="batch size")
     parser.add_argument("--num-epochs", type=int, default=400, help="number of epochs")
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         args.eval_file,
         args.output_dir,
         args.scale,
-        args.lr,
+        args.learn_rate,
         args.batch_size,
         args.num_epochs,
         args.num_workers,

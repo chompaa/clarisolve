@@ -1,5 +1,7 @@
 import argparse
 import glob
+from pathlib import Path
+from os.path import isfile
 
 import h5py
 import numpy as np
@@ -19,6 +21,10 @@ def make_hr_lr_images(
         with Image.open(image_path).convert("RGB") as hr:
             # downscale images if we want "faster" training
             if downscale:
+                print(
+                    f"Downscaling from {hr.width} x {hr.height} to {int(hr.width * downscale)} x {int(hr.height * downscale)}"
+                )
+
                 hr = hr.resize(
                     (int(hr.width * downscale), int(hr.height * downscale)),
                     resample=Image.BICUBIC,
@@ -51,13 +57,13 @@ def make_hr_lr_images(
 
 def make_train_dataset(
     images_dir: str,
-    output_dir: str,
+    output_file: str,
     patch_size: int,
     stride: int,
     scale: int,
     downscale: float,
 ):
-    h5_file = h5py.File(output_dir, "w")
+    h5_file = h5py.File(output_file, "w")
 
     lr_patches = []
     hr_patches = []
@@ -77,8 +83,8 @@ def make_train_dataset(
     h5_file.close()
 
 
-def make_eval_dataset(images_dir, output_dir, scale, downscale):
-    h5_file = h5py.File(output_dir, "w")
+def make_eval_dataset(images_dir, output_file, scale, downscale):
+    h5_file = h5py.File(output_file, "w")
 
     lr_group = h5_file.create_group("lr")
     hr_group = h5_file.create_group("hr")
@@ -95,7 +101,7 @@ def make_eval_dataset(images_dir, output_dir, scale, downscale):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--images-dir", type=str, required=True)
-    parser.add_argument("--output-dir", type=str, required=True)
+    parser.add_argument("--output-file", type=str, required=True)
     parser.add_argument("--patch-size", type=int, default=33)
     parser.add_argument("--stride", type=int, default=14)
     parser.add_argument("--scale", type=int, default=2)
@@ -107,11 +113,11 @@ if __name__ == "__main__":
     if not args.eval:
         make_train_dataset(
             args.images_dir,
-            args.output_dir,
+            args.output_file,
             args.patch_size,
             args.stride,
             args.scale,
             args.downscale,
         )
     else:
-        make_eval_dataset(args.images_dir, args.output_dir, args.scale, args.downscale)
+        make_eval_dataset(args.images_dir, args.output_file, args.scale, args.downscale)
