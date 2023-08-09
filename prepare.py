@@ -12,19 +12,19 @@ from torchvision.transforms import InterpolationMode
 from utils import convert_rgb_to_y
 
 
-def get_image_paths(path):
-    return sorted(glob.glob(f"{path}/*"))
-
-
-def make_hr_lr_images(image_paths, scale):
+def make_hr_lr_images(image_paths, scale, downscale):
     hr_images = []
     lr_images = []
 
-    # floating point scale factors are bad..
-    scale = int(scale)
-
-    for image_path in get_image_paths(image_paths):
+    for image_path in sorted(glob.glob(f"{image_paths}/*")):
         with Image.open(image_path).convert("RGB") as hr:
+            # downscale images if we want "faster" training
+            if downscale:
+                hr = hr.resize(
+                    (int(hr.width * downscale), int(hr.height * downscale)),
+                    resample=Image.BICUBIC,
+                )
+
             # want hr image to be divisible by scale
             hr_width = (hr.width // scale) * scale
             hr_height = (hr.height // scale) * scale
@@ -50,17 +50,33 @@ def make_hr_lr_images(image_paths, scale):
     return hr_images, lr_images
 
 
-def train(args):
-    h5_file = h5py.File(args.output_path, "w")
+def downscale(image, scale):
+    transform = transforms.Compose(
+        [
+            transforms.Resize(
+                size=(
+                    int(image.height * scale),
+                    int(image.width * scale),
+                ),
+                interpolation=InterpolationMode.BICUBIC,
+            ),
+        ]
+    )
+
+    return
+
+
+def make_train_dataset(images_dir, output_dir, patch_size, stride, scale, downscale):
+    h5_file = h5py.File(output_dir, "w")
 
     lr_patches = []
     hr_patches = []
 
-    for hr, lr in zip(*make_hr_lr_images(args.images_dir, args.scale)):
-        for i in range(0, lr.shape[0] - args.patch_size + 1, args.stride):
-            for j in range(0, lr.shape[1] - args.patch_size + 1, args.stride):
-                lr_patches.append(lr[i : i + args.patch_size, j : j + args.patch_size])
-                hr_patches.append(hr[i : i + args.patch_size, j : j + args.patch_size])
+    for hr, lr in zip(*make_hr_lr_images(images_dir, scale, downscale)):
+        for i in range(0, lr.shape[0] - patch_size + 1, stride):
+            for j in range(0, lr.shape[1] - patch_size + 1, stride):
+                lr_patches.append(lr[i : i + patch_size, j : j + patch_size])
+                hr_patches.append(hr[i : i + patch_size, j : j + patch_size])
 
     lr_patches = np.array(lr_patches)
     hr_patches = np.array(hr_patches)
@@ -71,14 +87,14 @@ def train(args):
     h5_file.close()
 
 
-def eval(args):
-    h5_file = h5py.File(args.output_path, "w")
+def make_eval_dataset(images_dir, output_dir, scale, downscale):
+    h5_file = h5py.File(output_dir, "w")
 
     lr_group = h5_file.create_group("lr")
     hr_group = h5_file.create_group("hr")
 
     for index, (hr, lr) in enumerate(
-        zip(*make_hr_lr_images(args.images_dir, args.scale))
+        zip(*make_hr_lr_images(images_dir, scale, downscale))
     ):
         lr_group.create_dataset(str(index), data=lr)
         hr_group.create_dataset(str(index), data=hr)
@@ -86,43 +102,26 @@ def eval(args):
     h5_file.close()
 
 
-def resize(args):
-    for image_path in get_image_paths(args.images_dir):
-        with Image.open(image_path) as image:
-            transform = transforms.Compose(
-                [
-                    transforms.Resize(
-                        size=(
-                            int(image.height * args.scale),
-                            int(image.width * args.scale),
-                        ),
-                        interpolation=InterpolationMode.BICUBIC,
-                    ),
-                ]
-            )
-
-            # perform tensor conversion here for type hinting purposes
-            image_tensor = transforms.ToTensor()(transform(image))
-            name = image_path.split("/")[-1].split(".")[0].split("\\")[-1]
-
-            save_image(image_tensor, f"{args.output_path}/{name}.png")
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--images-dir", type=str, required=True)
-    parser.add_argument("--output-path", type=str, required=True)
+    parser.add_argument("--output-dir", type=str, required=True)
     parser.add_argument("--patch-size", type=int, default=33)
     parser.add_argument("--stride", type=int, default=14)
-    parser.add_argument("--scale", type=float, default=2)
-    parser.add_argument("--resize", action="store_true")
+    parser.add_argument("--scale", type=int, default=2)
+    parser.add_argument("--downscale", type=float, default=None)
     parser.add_argument("--eval", action="store_true")
 
     args = parser.parse_args()
 
-    if not args.eval and not args.resize:
-        train(args)
-    elif args.resize:
-        resize(args)
+    if not args.eval:
+        make_train_dataset(
+            args.images_dir,
+            args.output_dir,
+            args.patch_size,
+            args.stride,
+            args.scale,
+            args.downscale,
+        )
     else:
-        eval(args)
+        make_eval_dataset(args.images_dir, args.output_dir, args.scale, args.downscale)
