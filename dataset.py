@@ -8,13 +8,15 @@ class TrainDataset(Dataset):
         super(TrainDataset, self).__init__()
         self.h5_file = h5_file
 
-    def __getitem__(self, idx):
-        with h5py.File(self.h5_file, 'r') as f:
-            return np.expand_dims(f['lr'][idx] / 255., 0), np.expand_dims(f['hr'][idx] / 255., 0)
+    def __getitem__(self, index):
+        with h5py.File(self.h5_file, "r") as dataset_file:
+            return np.expand_dims(dataset_file["lr"][index] / 255.0, 0), np.expand_dims(
+                dataset_file["hr"][index] / 255.0, 0
+            )
 
     def __len__(self):
-        with h5py.File(self.h5_file, 'r') as f:
-            return len(f['lr'])
+        with h5py.File(self.h5_file, "r") as dataset_file:
+            return len(dataset_file["lr"])
 
 
 class EvalDataset(Dataset):
@@ -22,10 +24,12 @@ class EvalDataset(Dataset):
         super(EvalDataset, self).__init__()
         self.h5_file = h5_file
 
-    def __getitem__(self, idx):
-        with h5py.File(self.h5_file, 'r') as f:
-            return np.expand_dims(f['lr'][str(idx)][:, :] / 255., 0), np.expand_dims(f['hr'][str(idx)][:, :] / 255., 0)
+    def __getitem__(self, index):
+        with h5py.File(self.h5_file, "r") as dataset_file:
+            return np.expand_dims(
+                dataset_file["lr"][str(index)][:, :] / 255.0, 0
+            ), np.expand_dims(dataset_file["hr"][str(index)][:, :] / 255.0, 0)
 
     def __len__(self):
-        with h5py.File(self.h5_file, 'r') as f:
-            return len(f['lr'])
+        with h5py.File(self.h5_file, "r") as dataset_file:
+            return len(dataset_file["lr"])
