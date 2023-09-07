@@ -36,9 +36,11 @@ def sisr(weights_file, output_folder, image_file, scale, set_status):
     image_name = image_file.split("/")[-1].split("\\")[-1]
 
     with Image.open(image_file).convert("RGB") as image:
+        # ensure image is divisible by scale
         image_width = (image.width // scale) * scale
         image_height = (image.height // scale) * scale
         image = image.resize((image_width, image_height), resample=Image.BICUBIC)
+
         image = image.resize(
             (image.width // scale, image.height // scale),
             resample=Image.BICUBIC,
@@ -88,4 +90,4 @@ if __name__ == "__main__":
     parser.add_argument("--scale", type=int, default=3)
     args = parser.parse_args()
 
-    sisr(args.weights_file, "", args.image_file, args.scale, None)
+    sisr(args.weights_file, "", args.image_file, args.scale, (lambda _: None))
