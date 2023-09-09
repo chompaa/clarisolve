@@ -1,20 +1,21 @@
 import argparse
 import copy
 import os
+import typing
 
 import torch
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
-from torch import nn
-from torch.utils.data.dataloader import DataLoader
-from tqdm import tqdm
+import torch.utils.data.dataloader
+import tqdm
 
-from dataset import EvalDataset, TrainDataset
-from srcnn import SRCNN
-from utils import AverageMeter, calculate_psnr
+import dataset
+import models
+import utils
 
 
 def train(
+    mode: typing.Literal["sr", "ic"],
     train_file: str,
     eval_file: str,
     output_dir: str,
@@ -35,19 +36,33 @@ def train(
 
     torch.manual_seed(seed)
 
-    model = SRCNN().to(device)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(
-        [
-            {"params": model.conv1.parameters()},
-            {"params": model.conv2.parameters()},
-            {"params": model.conv3.parameters(), "lr": learn_rate * 0.1},
-        ],
-        lr=learn_rate,
-    )
+    optimizer = None
 
-    train_dataset = TrainDataset(train_file)
-    train_dataloader = DataLoader(
+    if mode == "sr":
+        model = models.SRCNN().to(device)
+
+        optimizer = optim.Adam(
+            [
+                {"params": model.conv1.parameters()},
+                {"params": model.conv2.parameters()},
+                {"params": model.conv3.parameters(), "lr": learn_rate * 0.1},
+            ],
+            lr=learn_rate,
+        )
+    else:
+        model = models.ICCNN().to(device)
+
+        optimizer = optim.Adam(
+            model.parameters(),
+            lr=learn_rate,
+        )
+
+    criterion = torch.nn.MSELoss()
+
+    train_dataset = dataset.TrainDataset(
+        train_file, input_key="inputs", label_key="labels", normalize=mode == "sr"
+    )
+    train_dataloader = torch.utils.data.dataloader.DataLoader(
         dataset=train_dataset,
         batch_size=batch_size,
         shuffle=True,
@@ -55,8 +70,10 @@ def train(
         pin_memory=True,
         drop_last=True,
     )
-    eval_dataset = EvalDataset(eval_file)
-    eval_dataloader = DataLoader(dataset=eval_dataset, batch_size=1)
+    eval_dataset = dataset.EvalDataset(
+        eval_file, input_key="inputs", label_key="labels", normalize=mode == "sr"
+    )
+    eval_dataloader = torch.utils.data.DataLoader(dataset=eval_dataset, batch_size=1)
 
     best_weights = copy.deepcopy(model.state_dict())
     best_epoch = 0
@@ -64,9 +81,9 @@ def train(
 
     for epoch in range(num_epochs):
         model.train()
-        epoch_losses = AverageMeter()
+        epoch_losses = utils.AverageMeter()
 
-        with tqdm(
+        with tqdm.tqdm(
             total=(len(train_dataset) - len(train_dataset) % batch_size)
         ) as progress_bar:
             progress_bar.set_description(f"epoch: {epoch}/{num_epochs - 1}")
@@ -96,7 +113,7 @@ def train(
         )
 
         model.eval()
-        epoch_psnr = AverageMeter()
+        epoch_psnr = utils.AverageMeter()
 
         for data in eval_dataloader:
             inputs, labels = data
@@ -107,7 +124,7 @@ def train(
             with torch.no_grad():
                 preds = model(inputs).clamp(0.0, 1.0)
 
-            epoch_psnr.update(calculate_psnr(preds, labels), len(inputs))
+            epoch_psnr.update(utils.calculate_psnr(preds, labels), len(inputs))
 
         print(f"eval psnr: {epoch_psnr.avg:.2f}")
 
@@ -123,6 +140,7 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", type=str, required=True, help="sr or ic")
     parser.add_argument(
         "--train-file", type=str, required=True, help="training dataset"
     )
@@ -141,7 +159,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    if args.mode not in ["sr", "ic"]:
+        raise ValueError("mode must be either sr or ic")
+
     train(
+        args.mode,
         args.train_file,
         args.eval_file,
         args.output_dir,

@@ -1,5 +1,8 @@
 import sys
+from platform import system
 from os.path import abspath
+from os import startfile
+from subprocess import Popen
 
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QPixmap
@@ -11,13 +14,14 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QCheckBox,
     QPushButton,
     QRadioButton,
     QVBoxLayout,
     QWidget,
 )
 
-from test import sisr
+from sisr import sisr
 
 
 class ScaleSelector(QGroupBox):
@@ -121,6 +125,39 @@ class FileSelector(QGroupBox):
         return self.path_input.text()
 
 
+class StateSelector(QGroupBox):
+    def __init__(self, title, initial_state):
+        super(QGroupBox, self).__init__()
+
+        self.setTitle(title)
+        self.state = initial_state
+
+        layout = QHBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        yes_button = QCheckBox("Yes")
+        yes_button.setChecked(initial_state)
+        yes_button.toggled.connect(self.on_selected)
+
+        layout.addWidget(yes_button)
+
+        self.setLayout(layout)
+
+    def on_selected(self):
+        button = self.sender()
+
+        if not button or not (type(button) is QCheckBox):
+            return
+
+        if button.isChecked():
+            self.state = True
+        else:
+            self.state = False
+
+    def get_state(self):
+        return self.state
+
+
 class ImageSelector(QGroupBox):
     image_path = abspath("./butterfly.png")
 
@@ -130,10 +167,9 @@ class ImageSelector(QGroupBox):
         self.image_width = image_width
         self.image_height = image_height
 
-        self.setTitle("Select Image")
+        self.setTitle("Select image")
 
         layout = QVBoxLayout()
-        layout.setSpacing(20)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.display_image = QLabel()
@@ -141,7 +177,7 @@ class ImageSelector(QGroupBox):
 
         self.set_image(self.image_path)
 
-        select_image = QPushButton("Choose File")
+        select_image = QPushButton("Choose file")
         select_image.clicked.connect(self.select_image)
         select_image.setFixedWidth(self.image_width)
 
@@ -190,12 +226,15 @@ class MainWindow(QMainWindow):
 
         self.scale_selector = ScaleSelector(["2", "3", "4"], "2")
         self.weights_selector = FileSelector(
-            "Weights File",
+            "Weights file",
             abspath("./weights/x2/best.pth"),
             "PyTorch State Dictionary Files *.pth",
         )
-        self.output_selector = FolderSelector("Output Folder", abspath("./output/"))
-        self.input_selector = ImageSelector(150, 150)
+        self.output_selector = FolderSelector("Output folder", abspath("./output/"))
+        self.open_folder_when_complete = StateSelector(
+            "Open folder when complete", True
+        )
+        self.input_selector = ImageSelector(184, 184)
 
         self.status = QLabel("Ready")
 
@@ -205,6 +244,7 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.scale_selector)
         left_layout.addWidget(self.weights_selector)
         left_layout.addWidget(self.output_selector)
+        left_layout.addWidget(self.open_folder_when_complete)
         left_layout.addStretch(1)
 
         right_layout.addWidget(self.input_selector)
@@ -227,8 +267,19 @@ class MainWindow(QMainWindow):
         output_folder = self.output_selector.get_folder()
         image_path = self.input_selector.get_image_path()
         scale = self.scale_selector.get_scale()
+        open_folder_when_complete = self.open_folder_when_complete.get_state()
 
-        sisr(weights_file, output_folder, image_path, scale, self.set_status)
+        sisr(weights_file, output_folder, image_path, scale, True)
+
+        if not open_folder_when_complete:
+            return
+
+        if system() == "Windows":
+            startfile(output_folder)
+        elif system() == "Darwin":
+            Popen(["open", output_folder])
+        else:
+            Popen(["xdg-open", output_folder])
 
     def set_status(self, status):
         self.status.setText(status)

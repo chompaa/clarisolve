@@ -1,5 +1,5 @@
-import torch
 import numpy as np
+import torch
 
 
 def convert_rgb_to_y(img):
@@ -95,8 +95,9 @@ def convert_ycbcr_to_rgb(img):
         raise Exception("Unknown Type", type(img))
 
 
-def calculate_psnr(image_1, image_2):
-    return 10.0 * torch.log10(1.0 / torch.mean((image_1 - image_2) ** 2))
+def calculate_psnr(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    print(x.shape, y.shape)
+    return 10.0 * torch.log10(1.0 / torch.mean((x - y) ** 2))
 
 
 class AverageMeter(object):
