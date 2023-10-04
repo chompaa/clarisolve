@@ -1,4 +1,5 @@
 import sys
+import os
 from platform import system
 from os.path import abspath
 from os import startfile
@@ -22,6 +23,7 @@ from PyQt6.QtWidgets import (
 )
 
 from sisr import sisr
+from ic import ic
 
 
 class ScaleSelector(QGroupBox):
@@ -224,10 +226,16 @@ class MainWindow(QMainWindow):
         left_layout = QVBoxLayout()
         right_layout = QVBoxLayout()
 
-        self.scale_selector = ScaleSelector(["2", "3", "4"], "2")
-        self.weights_selector = FileSelector(
-            "Weights file",
+        self.colorize_selector = StateSelector("Colorize", True)
+        self.scale_selector = ScaleSelector(["1", "2", "3", "4"], "2")
+        self.sisr_weights_selector = FileSelector(
+            "SISR weights",
             abspath("./weights/x2/best.pth"),
+            "PyTorch State Dictionary Files *.pth",
+        )
+        self.sic_weights_selector = FileSelector(
+            "SIC weights",
+            abspath("./weights/ic.pth"),
             "PyTorch State Dictionary Files *.pth",
         )
         self.output_selector = FolderSelector("Output folder", abspath("./output/"))
@@ -241,8 +249,10 @@ class MainWindow(QMainWindow):
         enhance_button = QPushButton("Enhance")
         enhance_button.clicked.connect(self.enhance)
 
+        left_layout.addWidget(self.colorize_selector)
         left_layout.addWidget(self.scale_selector)
-        left_layout.addWidget(self.weights_selector)
+        left_layout.addWidget(self.sisr_weights_selector)
+        left_layout.addWidget(self.sic_weights_selector)
         left_layout.addWidget(self.output_selector)
         left_layout.addWidget(self.open_folder_when_complete)
         left_layout.addStretch(1)
@@ -263,13 +273,25 @@ class MainWindow(QMainWindow):
         self.show()
 
     def enhance(self):
-        weights_file = self.weights_selector.get_file()
+        sisr_weights = self.sisr_weights_selector.get_file()
+        sic_weights = self.sic_weights_selector.get_file()
         output_folder = self.output_selector.get_folder()
         image_path = self.input_selector.get_image_path()
         scale = self.scale_selector.get_scale()
+
         open_folder_when_complete = self.open_folder_when_complete.get_state()
 
-        sisr(weights_file, output_folder, image_path, scale, True)
+        colorize = self.colorize_selector.get_state()
+
+        if colorize:
+            ic(sic_weights, output_folder, image_path)
+            image_name, image_ext = os.path.splitext(os.path.basename(image_path))
+            image_path = os.path.join(
+                output_folder, f"{image_name}_colorized{image_ext}"
+            )
+
+        if scale != 1:
+            sisr(sisr_weights, output_folder, image_path, scale, True)
 
         if not open_folder_when_complete:
             return
