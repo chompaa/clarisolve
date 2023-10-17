@@ -1,29 +1,29 @@
-import sys
 import os
-from platform import system
-from os.path import abspath
+import sys
 from os import startfile
+from os.path import abspath
+from platform import system
 from subprocess import Popen
 
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QFileDialog,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
-    QCheckBox,
     QPushButton,
     QRadioButton,
     QVBoxLayout,
     QWidget,
 )
 
-from sisr import sisr
 from ic import ic
+from sisr import sisr
 
 
 class ScaleSelector(QGroupBox):
@@ -217,54 +217,67 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        self.setWindowTitle("SISR Tool")
+        self.setWindowTitle("Clary-solve")
 
         widget = QWidget()
 
         main_layout = QVBoxLayout()
+
         top_layout = QHBoxLayout()
-        left_layout = QVBoxLayout()
-        right_layout = QVBoxLayout()
+        scale_colorize_layout = QHBoxLayout()
+        top_left_layout = QVBoxLayout()
+        top_right_layout = QVBoxLayout()
+
+        bottom_layout = QHBoxLayout()
 
         self.colorize_selector = StateSelector("Colorize", True)
         self.scale_selector = ScaleSelector(["1", "2", "3", "4"], "2")
         self.sisr_weights_selector = FileSelector(
-            "SISR weights",
-            abspath("./weights/x2/best.pth"),
+            "Super-resolution weights",
+            # abspath("./weights/x2/best.pth"),
+            "",
             "PyTorch State Dictionary Files *.pth",
         )
         self.sic_weights_selector = FileSelector(
-            "SIC weights",
-            abspath("./weights/ic.pth"),
+            "Colorization weights",
+            # abspath("./weights/ic.pth"),
+            "",
             "PyTorch State Dictionary Files *.pth",
         )
-        self.output_selector = FolderSelector("Output folder", abspath("./output/"))
-        self.open_folder_when_complete = StateSelector(
-            "Open folder when complete", True
+        self.output_selector = FolderSelector(
+            "Output folder", abspath("./output").replace("\\", "/")
         )
-        self.input_selector = ImageSelector(184, 184)
+        self.input_selector = ImageSelector(190, 190)
 
         self.status = QLabel("Ready")
+        self.open_on_complete = QCheckBox("Open on complete")
+        self.open_on_complete.setChecked(True)
+
+        bottom_layout.addWidget(self.status, alignment=Qt.AlignmentFlag.AlignLeft)
+        bottom_layout.addWidget(
+            self.open_on_complete, alignment=Qt.AlignmentFlag.AlignRight
+        )
 
         enhance_button = QPushButton("Enhance")
         enhance_button.clicked.connect(self.enhance)
 
-        left_layout.addWidget(self.colorize_selector)
-        left_layout.addWidget(self.scale_selector)
-        left_layout.addWidget(self.sisr_weights_selector)
-        left_layout.addWidget(self.sic_weights_selector)
-        left_layout.addWidget(self.output_selector)
-        left_layout.addWidget(self.open_folder_when_complete)
-        left_layout.addStretch(1)
+        scale_colorize_layout.addWidget(self.colorize_selector)
+        scale_colorize_layout.addWidget(self.scale_selector)
+        scale_colorize_layout.addStretch(1)
 
-        right_layout.addWidget(self.input_selector)
-        right_layout.addStretch(1)
+        top_left_layout.addLayout(scale_colorize_layout)
+        top_left_layout.addWidget(self.sisr_weights_selector)
+        top_left_layout.addWidget(self.sic_weights_selector)
+        top_left_layout.addWidget(self.output_selector)
 
-        top_layout.addLayout(left_layout)
-        top_layout.addLayout(right_layout)
+        top_right_layout.addWidget(self.input_selector)
+        top_right_layout.addStretch(1)
+
+        top_layout.addLayout(top_left_layout)
+        top_layout.addLayout(top_right_layout)
 
         main_layout.addLayout(top_layout)
-        main_layout.addWidget(self.status, alignment=Qt.AlignmentFlag.AlignBottom)
+        main_layout.addLayout(bottom_layout)
         main_layout.addWidget(enhance_button, alignment=Qt.AlignmentFlag.AlignBottom)
 
         widget.setLayout(main_layout)
@@ -279,7 +292,7 @@ class MainWindow(QMainWindow):
         image_path = self.input_selector.get_image_path()
         scale = self.scale_selector.get_scale()
 
-        open_folder_when_complete = self.open_folder_when_complete.get_state()
+        open_on_complete = self.open_on_complete.isChecked()
 
         colorize = self.colorize_selector.get_state()
 
@@ -293,7 +306,7 @@ class MainWindow(QMainWindow):
         if scale != 1:
             sisr(sisr_weights, output_folder, image_path, scale, True)
 
-        if not open_folder_when_complete:
+        if not open_on_complete:
             return
 
         if system() == "Windows":
