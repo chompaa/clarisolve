@@ -27,6 +27,8 @@ def make_lab_dataset(
 
     for image_path in sorted(glob.glob(f"{images_dir}/*")):
         with PIL.Image.open(image_path).convert("RGB") as image:
+            print(image_path)
+
             if downscale:
                 image = scale_image(image, downscale)
 
@@ -57,6 +59,7 @@ def make_ic_train_dataset(
     for image, ab in zip(*make_lab_dataset(images_dir, downscale)):
         for i in range(0, image.shape[1] - patch_size + 1, stride):
             for j in range(0, image.shape[2] - patch_size + 1, stride):
+                print(i, j)
                 gray_patches.append(image[:, i : i + patch_size, j : j + patch_size])
                 ab_patches.append(ab[:, i : i + patch_size, j : j + patch_size])
 

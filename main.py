@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ic import ic
-from sisr import sisr
+from isr import isr
 
 
 class ScaleSelector(QGroupBox):
@@ -304,7 +304,7 @@ class MainWindow(QMainWindow):
             )
 
         if scale != 1:
-            sisr(sisr_weights, output_folder, image_path, scale, True)
+            isr(sisr_weights, output_folder, image_path, scale, True)
 
         if not open_on_complete:
             return

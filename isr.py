@@ -9,7 +9,7 @@ import models
 import utils
 
 
-def sisr(
+def isr(
     weights_file: str, output_folder: str, image_file: str, scale: int, upscale: bool
 ):
     torch.backends.cudnn.benchmark = True
@@ -87,4 +87,4 @@ if __name__ == "__main__":
     parser.add_argument("--upscale", action="store_true", default=True)
     args = parser.parse_args()
 
-    sisr(args.weights_file, "", args.image_file, args.scale, args.upscale)
+    isr(args.weights_file, "", args.image_file, args.scale, args.upscale)
