@@ -4,6 +4,9 @@
 
 ## Requirements
 
+You must have Python with minimum version `3.10.0` installed
+your system.
+
 To install the required packages, you can run:
 
 ```shell
@@ -11,6 +14,8 @@ pip install -r requirements.txt
 ```
 
 ## Usage
+
+> ⚠️ **Warning**: This tool does **not** catch errors. As a result, running it incorrectly may produce incoherent traces.
 
 ### Evaluation
 
