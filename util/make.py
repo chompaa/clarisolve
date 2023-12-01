@@ -4,10 +4,12 @@ import glob
 import h5py
 import numpy as np
 import PIL.Image
+import PIL.ImageFile
 import skimage.color
 import torch
+import torchvision
 
-from utils import convert_rgb_to_y
+from util import convert_rgb_to_y
 
 
 def scale_image(image: PIL.Image.Image, factor: float) -> PIL.Image.Image:
@@ -20,50 +22,76 @@ def scale_image(image: PIL.Image.Image, factor: float) -> PIL.Image.Image:
 
 
 def make_lab_dataset(
-    images_dir: str, downscale: bool
+    images_dir: str, downscale: bool, transform=None
 ) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
     gray_images = []
     ab_channels = []
 
-    for image_path in sorted(glob.glob(f"{images_dir}/*")):
-        with PIL.Image.open(image_path).convert("RGB") as image:
-            print(image_path)
+    # allow truncated images (e.g. 1x1 pixel), stops OSError for some datasets
+    PIL.ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-            if downscale:
-                image = scale_image(image, downscale)
+    for idx, image_path in enumerate(sorted(glob.glob(f"{images_dir}/*"))):
+        print(idx)
 
-            image = np.array(image)
+        try:
+            with PIL.Image.open(image_path).convert("RGB") as image:
+                if downscale:
+                    image = scale_image(image, downscale)
 
-            gray_image = skimage.color.rgb2gray(image)
-            gray_image = torch.from_numpy(gray_image).unsqueeze(0).float()
-            gray_images.append(gray_image)
+                if transform:
+                    image = transform(image)
 
-            lab_image = skimage.color.rgb2lab(image)
-            # normalize lab image values to [0, 1]
-            lab_image = (lab_image + 128) / 255
-            channels = lab_image[:, :, 1:]
-            channels = torch.from_numpy(channels.transpose(2, 0, 1)).float()
-            ab_channels.append(channels)
+                image = np.array(image)
+
+                gray_image = skimage.color.rgb2gray(image)
+                gray_image = torch.from_numpy(gray_image).unsqueeze(0).float()
+                gray_images.append(gray_image)
+
+                lab_image = skimage.color.rgb2lab(image)
+                # normalize lab image values to [0, 1]
+                lab_image = (lab_image + 128) / 255
+                channels = lab_image[:, :, 1:]
+                channels = torch.from_numpy(channels.transpose(2, 0, 1)).float()
+                ab_channels.append(channels)
+        except Exception as _:
+            continue
 
     return gray_images, ab_channels
 
 
 def make_ic_train_dataset(
-    images_dir: str, output_file: str, patch_size: int, stride: int, downscale: bool
+    images_dir: str,
+    output_file: str,
+    patch_size: int | None,
+    stride: int | None,
+    downscale: bool,
 ):
     h5_file = h5py.File(output_file, "w")
 
     gray_patches = []
     ab_patches = []
 
-    for image, ab in zip(*make_lab_dataset(images_dir, downscale)):
-        for i in range(0, image.shape[1] - patch_size + 1, stride):
-            for j in range(0, image.shape[2] - patch_size + 1, stride):
-                print(i, j)
-                gray_patches.append(image[:, i : i + patch_size, j : j + patch_size])
-                ab_patches.append(ab[:, i : i + patch_size, j : j + patch_size])
+    transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.RandomResizedCrop(224),
+            torchvision.transforms.RandomHorizontalFlip(),
+        ]
+    )
 
-    print(gray_patches[0].shape, ab_patches[0].shape)
+    dataset = make_lab_dataset(images_dir, downscale, transform)
+
+    if patch_size and stride:
+        for idx, (image, ab) in enumerate(zip(*dataset)):
+            print(idx)
+
+            for i in range(0, image.shape[1] - patch_size + 1, stride):
+                for j in range(0, image.shape[2] - patch_size + 1, stride):
+                    gray_patches.append(
+                        image[:, i : i + patch_size, j : j + patch_size]
+                    )
+                    ab_patches.append(ab[:, i : i + patch_size, j : j + patch_size])
+    else:
+        gray_patches, ab_patches = dataset
 
     gray_patches = np.array(gray_patches)
     ab_patches = np.array(ab_patches)
@@ -80,8 +108,15 @@ def make_ic_eval_dataset(images_dir: str, output_file: str, downscale: bool):
     gray_group = h5_file.create_group("inputs")
     ab_group = h5_file.create_group("labels")
 
+    transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.Resize(256),
+            torchvision.transforms.CenterCrop(224),
+        ]
+    )
+
     for index, (gray_image, ab_channels) in enumerate(
-        zip(*make_lab_dataset(images_dir, downscale))
+        zip(*make_lab_dataset(images_dir, downscale, transform))
     ):
         gray_group.create_dataset(str(index), data=gray_image)
         ab_group.create_dataset(str(index), data=ab_channels)
@@ -174,8 +209,9 @@ if __name__ == "__main__":
     parser.add_argument("--mode", type=str, required=True, help="sr or ic")
     parser.add_argument("--images-dir", type=str, required=True)
     parser.add_argument("--output-file", type=str, required=True)
-    parser.add_argument("--patch-size", type=int, default=33)
-    parser.add_argument("--stride", type=int, default=14)
+    # 33x33 patches with stride of 14
+    parser.add_argument("--patch-size", type=int, default=None)
+    parser.add_argument("--stride", type=int, default=None)
     parser.add_argument("--scale", type=int, default=2)
     parser.add_argument("--downscale", type=float, default=None)
     parser.add_argument("--eval", action="store_true")

@@ -22,8 +22,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ic import ic
-from isr import isr
+import models
+from colorize import colorize
+from super_resolve import super_resolve
 
 
 class ScaleSelector(QGroupBox):
@@ -62,8 +63,6 @@ class ScaleSelector(QGroupBox):
 
         if scale_button.isChecked():
             self.scale = int(scale_button.text())
-
-            print(self.scale)
 
 
 class FolderSelector(QGroupBox):
@@ -294,17 +293,26 @@ class MainWindow(QMainWindow):
 
         open_on_complete = self.open_on_complete.isChecked()
 
-        colorize = self.colorize_selector.get_state()
+        colorize_image = self.colorize_selector.get_state()
 
-        if colorize:
-            ic(sic_weights, output_folder, image_path)
+        if colorize_image:
+            colorize(
+                models.IC_MODELS["icres"](), sic_weights, output_folder, image_path
+            )
             image_name, image_ext = os.path.splitext(os.path.basename(image_path))
             image_path = os.path.join(
                 output_folder, f"{image_name}_colorized{image_ext}"
             )
 
         if scale != 1:
-            isr(sisr_weights, output_folder, image_path, scale, True)
+            super_resolve(
+                models.SR_MODELS["srcnn"](),
+                sisr_weights,
+                output_folder,
+                image_path,
+                scale,
+                True,
+            )
 
         if not open_on_complete:
             return

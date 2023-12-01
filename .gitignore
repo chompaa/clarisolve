@@ -1,7 +1,13 @@
 datasets/
 output/
-./*.png
-./*.jpg
+weights/
+slices/
+channels/
+_misc/
+data/
+*.png
+*.jpg
+*.bmp
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

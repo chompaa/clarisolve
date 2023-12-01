@@ -6,16 +6,21 @@ import torch
 import torch.backends.cudnn
 
 import models
-import utils
+import util
 
 
-def isr(
-    weights_file: str, output_folder: str, image_file: str, scale: int, upscale: bool
+def super_resolve(
+    model: torch.nn.Module,
+    weights_file: str,
+    output_folder: str,
+    image_file: str,
+    scale: int,
+    upscale: bool,
 ):
     torch.backends.cudnn.benchmark = True
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    model = models.SRCNN().to(device)
+    model = model.to(device)
 
     state_dict = model.state_dict()
 
@@ -51,7 +56,7 @@ def isr(
 
         image = np.array(image).astype(np.float32)
 
-        ycbcr = utils.convert_rgb_to_ycbcr(image)
+        ycbcr = util.convert_rgb_to_ycbcr(image)
 
     y_channel = ycbcr[..., 0] / 255.0
     y_channel = torch.from_numpy(y_channel).to(device)
@@ -65,26 +70,36 @@ def isr(
 
     # only calculate PSNR if we have ground truth
     if not upscale:
-        psnr = utils.calculate_psnr(y_channel, predictions)
+        psnr = util.calculate_psnr(y_channel, predictions)
 
     predictions = predictions.mul(255.0).cpu().numpy().squeeze(0).squeeze(0)
 
     output = np.array([predictions, ycbcr[..., 1], ycbcr[..., 2]]).transpose([1, 2, 0])
-    output = np.clip(utils.convert_ycbcr_to_rgb(output), 0.0, 255.0).astype(np.uint8)
+    output = np.clip(util.convert_ycbcr_to_rgb(output), 0.0, 255.0).astype(np.uint8)
 
     PIL.Image.fromarray(output).save(
-        f"{output_folder}{image_name.replace('.', f'_srcnn_x{scale}.')}"
+        f"{output_folder}{image_name.replace('.', f'_{model}_x{scale}.')}"
     )
 
     return psnr
 
 
 if __name__ == "__main__":
+    model_list = models.SR_MODELS
+
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model", choices=model_list.keys(), required=True)
     parser.add_argument("--weights-file", type=str, required=True)
     parser.add_argument("--image-file", type=str, required=True)
     parser.add_argument("--scale", type=int, default=2)
     parser.add_argument("--upscale", action="store_true", default=True)
     args = parser.parse_args()
 
-    isr(args.weights_file, "", args.image_file, args.scale, args.upscale)
+    super_resolve(
+        model_list[args.model](),
+        args.weights_file,
+        "",
+        args.image_file,
+        args.scale,
+        args.upscale,
+    )

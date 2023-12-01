@@ -93,27 +93,3 @@ def convert_ycbcr_to_rgb(img):
         return torch.cat([r, g, b], 0).permute(1, 2, 0)
     else:
         raise Exception("Unknown Type", type(img))
-
-
-def calculate_psnr(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    print(x.shape, y.shape)
-    return 10.0 * torch.log10(1.0 / torch.mean((x - y) ** 2))
-
-
-class AverageMeter(object):
-    # taken from the PyTorch ImageNet example
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count

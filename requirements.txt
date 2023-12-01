@@ -1,0 +1,10 @@
+h5py==3.9.0
+numpy==1.25.2
+Pillow==10.1.0
+PyQt6==6.6.0
+PyQt6_sip==13.5.2
+scikit-image==0.22.0
+torch==2.1.1+cu121
+torchsummary==1.5.1
+torchvision==0.16.1+cu121
+tqdm==4.65.0
