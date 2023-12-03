@@ -15,7 +15,8 @@ pip install -r requirements.txt
 
 ## Usage
 
-> ⚠️ **Warning**: This tool does **not** catch errors. As a result, running it incorrectly may produce incoherent traces.
+> [!WARNING]
+> This tool does **not** catch errors. As a result, running it incorrectly may produce incoherent traces.
 
 ### Evaluation
 
