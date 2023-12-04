@@ -31,6 +31,10 @@ details.
 
 ### Training
 
+> [!NOTE]
+> For super-resolution models, a `.h5` file is required for both datasets, and for colorization, a
+directory is required.
+
 You can train any model yourself using `train.py` as follows:
 
 ```shell
@@ -44,9 +48,6 @@ python train.py --model { "srcnn", "srcnnc", "srres", "iccnn", "icres" } \
                 [--num-workers NUM_WORKERS] \
                 [--seed SEED]
 ```
-
-Note that for SR models, a `.h5` file is required for both datasets, and for IC, a
-directory is required.
 
 ### Datasets
 
