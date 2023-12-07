@@ -29,6 +29,9 @@ class ICCNN(torch.nn.Module):
         )
 
     def forward(self, output):
+        if output.dim() == 3:
+            output = output.unsqueeze(0)
+
         output = self.features(output)
         output = self.upsample(output)
 

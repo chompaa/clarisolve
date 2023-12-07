@@ -187,14 +187,14 @@ if __name__ == "__main__":
         model = sr_models[args.model]()
 
         train_dataset = util.TrainDataset(
-            args.train,
+            args.train_data,
             input_key="inputs",
             label_key="labels",
             normalize=True,
         )
 
         eval_dataset = util.EvalDataset(
-            args.eval,
+            args.eval_data,
             input_key="inputs",
             label_key="labels",
             normalize=True,
@@ -209,7 +209,7 @@ if __name__ == "__main__":
             ]
         )
 
-        train_dataset = util.ColorDataset(args.train, train_transform)
+        train_dataset = util.ColorDataset(args.train_data, train_transform)
 
         eval_transform = torchvision.transforms.Compose(
             [
@@ -218,7 +218,7 @@ if __name__ == "__main__":
             ]
         )
 
-        eval_dataset = util.ColorDataset(args.eval, eval_transform)
+        eval_dataset = util.ColorDataset(args.eval_data, eval_transform)
 
     assert model is not None
     assert train_dataset is not None

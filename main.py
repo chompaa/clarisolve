@@ -20,49 +20,12 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QVBoxLayout,
     QWidget,
+    QComboBox,
 )
 
 import models
 from colorize import colorize
 from super_resolve import super_resolve
-
-
-class ScaleSelector(QGroupBox):
-    scale = None
-
-    def __init__(self, scale_levels, scale_default):
-        super(QGroupBox, self).__init__()
-
-        self.scale = scale_default
-        self.setTitle("Scale")
-
-        layout = QHBoxLayout()
-
-        for scale in scale_levels:
-            toggle = QRadioButton(str(scale))
-
-            if scale == scale_default:
-                toggle.setChecked(True)
-
-            toggle.toggled.connect(self.on_selected)
-
-            layout.addWidget(toggle)
-
-        layout.addStretch(1)
-
-        self.setLayout(layout)
-
-    def get_scale(self):
-        return int(self.scale)
-
-    def on_selected(self):
-        scale_button = self.sender()
-
-        if not scale_button or not (type(scale_button) is QRadioButton):
-            return
-
-        if scale_button.isChecked():
-            self.scale = int(scale_button.text())
 
 
 class FolderSelector(QGroupBox):
@@ -94,23 +57,24 @@ class FolderSelector(QGroupBox):
         return self.path_input.text()
 
 
-class FileSelector(QGroupBox):
-    def __init__(self, title, default_path, file_type):
-        super(QGroupBox, self).__init__()
+class FileSelector(QWidget):
+    def __init__(self, placeholder_text, file_type):
+        super(QWidget, self).__init__()
 
-        self.setTitle(title)
         self.file_type = file_type
 
         layout = QHBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.path_input = QLineEdit(default_path)
+        self.path_input = QLineEdit()
+        self.path_input.setPlaceholderText(placeholder_text)
 
         select_file = QPushButton("Choose File")
         select_file.clicked.connect(self.select_file)
 
         layout.addWidget(self.path_input)
         layout.addWidget(select_file)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         self.setLayout(layout)
 
@@ -124,39 +88,6 @@ class FileSelector(QGroupBox):
 
     def get_file(self):
         return self.path_input.text()
-
-
-class StateSelector(QGroupBox):
-    def __init__(self, title, initial_state):
-        super(QGroupBox, self).__init__()
-
-        self.setTitle(title)
-        self.state = initial_state
-
-        layout = QHBoxLayout()
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        yes_button = QCheckBox("Yes")
-        yes_button.setChecked(initial_state)
-        yes_button.toggled.connect(self.on_selected)
-
-        layout.addWidget(yes_button)
-
-        self.setLayout(layout)
-
-    def on_selected(self):
-        button = self.sender()
-
-        if not button or not (type(button) is QCheckBox):
-            return
-
-        if button.isChecked():
-            self.state = True
-        else:
-            self.state = False
-
-    def get_state(self):
-        return self.state
 
 
 class ImageSelector(QGroupBox):
@@ -216,31 +147,45 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        self.setWindowTitle("Clary-solve")
+        self.setWindowTitle("Clarisolve")
 
         widget = QWidget()
 
         main_layout = QVBoxLayout()
 
         top_layout = QHBoxLayout()
-        scale_colorize_layout = QHBoxLayout()
+
+        super_resolve_group = QGroupBox()
+        super_resolve_group.setTitle("Super Resolution")
+        super_resolve_layout = QVBoxLayout()
+        super_resolve_group.setLayout(super_resolve_layout)
+
+        colorize_group = QGroupBox()
+        colorize_group.setTitle("Colorization")
+        colorize_layout = QVBoxLayout()
+        colorize_group.setLayout(colorize_layout)
+
         top_left_layout = QVBoxLayout()
         top_right_layout = QVBoxLayout()
 
         bottom_layout = QHBoxLayout()
 
-        self.colorize_selector = StateSelector("Colorize", True)
-        self.scale_selector = ScaleSelector(["1", "2", "3", "4"], "2")
+        self.super_resolve_model = QComboBox()
+        self.super_resolve_model.addItems(models.SR_MODELS.keys())
+        self.super_resolve_model.setPlaceholderText("Select model")
+        self.super_resolve_model.setCurrentIndex(-1)
+
+        self.colorize_model = QComboBox()
+        self.colorize_model.addItems(models.IC_MODELS.keys())
+        self.colorize_model.setPlaceholderText("Select model")
+        self.colorize_model.setCurrentIndex(-1)
+
         self.sisr_weights_selector = FileSelector(
-            "Super-resolution weights",
-            # abspath("./weights/x2/best.pth"),
-            "",
+            "Path to weights..",
             "PyTorch State Dictionary Files *.pth",
         )
         self.sic_weights_selector = FileSelector(
-            "Colorization weights",
-            # abspath("./weights/ic.pth"),
-            "",
+            "Path to weights..",
             "PyTorch State Dictionary Files *.pth",
         )
         self.output_selector = FolderSelector(
@@ -260,13 +205,16 @@ class MainWindow(QMainWindow):
         enhance_button = QPushButton("Enhance")
         enhance_button.clicked.connect(self.enhance)
 
-        scale_colorize_layout.addWidget(self.colorize_selector)
-        scale_colorize_layout.addWidget(self.scale_selector)
-        scale_colorize_layout.addStretch(1)
+        super_resolve_layout.addWidget(self.super_resolve_model)
+        super_resolve_layout.addWidget(self.sisr_weights_selector)
+        super_resolve_layout.addStretch(1)
 
-        top_left_layout.addLayout(scale_colorize_layout)
-        top_left_layout.addWidget(self.sisr_weights_selector)
-        top_left_layout.addWidget(self.sic_weights_selector)
+        colorize_layout.addWidget(self.colorize_model)
+        colorize_layout.addWidget(self.sic_weights_selector)
+        colorize_layout.addStretch(1)
+
+        top_left_layout.addWidget(super_resolve_group)
+        top_left_layout.addWidget(colorize_group)
         top_left_layout.addWidget(self.output_selector)
 
         top_right_layout.addWidget(self.input_selector)
@@ -289,28 +237,39 @@ class MainWindow(QMainWindow):
         sic_weights = self.sic_weights_selector.get_file()
         output_folder = self.output_selector.get_folder()
         image_path = self.input_selector.get_image_path()
-        scale = self.scale_selector.get_scale()
+
+        super_resolve_model = self.super_resolve_model.currentText()
+        colorize_model = self.colorize_model.currentText()
 
         open_on_complete = self.open_on_complete.isChecked()
 
-        colorize_image = self.colorize_selector.get_state()
+        if colorize_model:
+            if not os.path.exists(sic_weights):
+                self.set_status("Colorization weights not found")
+                return
 
-        if colorize_image:
             colorize(
-                models.IC_MODELS["icres"](), sic_weights, output_folder, image_path
+                models.IC_MODELS[colorize_model](),
+                sic_weights,
+                output_folder,
+                image_path,
             )
             image_name, image_ext = os.path.splitext(os.path.basename(image_path))
             image_path = os.path.join(
                 output_folder, f"{image_name}_colorized{image_ext}"
             )
 
-        if scale != 1:
+        if super_resolve_model:
+            if not os.path.exists(sisr_weights):
+                self.set_status("Super resolution weights not found")
+                return
+
             super_resolve(
-                models.SR_MODELS["srcnn"](),
+                models.SR_MODELS[super_resolve_model](),
                 sisr_weights,
                 output_folder,
                 image_path,
-                scale,
+                2,
                 True,
             )
 
