@@ -9,7 +9,7 @@ class ICRes(torch.nn.Module):
 
         assert blocks >= 0 and blocks <= 4
 
-        midlevel_feature_size = 64 * blocks
+        midlevel_feature_size = 64 * np.power(2, blocks - 1)
 
         # first half: ResNet-18
         resnet = torchvision.models.resnet18(num_classes=365)
@@ -18,10 +18,12 @@ class ICRes(torch.nn.Module):
             resnet.conv1.weight.sum(dim=1).unsqueeze(1)
         )
         # include initial convolution and pooling layers
-        num_layers = 2 + (blocks * 2)
-        # extract the first six layers from ResNet-18 (up to )
+        num_layers = blocks * 2
+        if blocks == 2:
+            num_layers += 2
+        # extract the first n layers from ResNet-18
         self.midlevel_resnet = torch.nn.Sequential(
-            *list(resnet.children())[0:num_layers]
+            *list(resnet.children())[:num_layers]
         )
 
         layers = [
@@ -35,6 +37,7 @@ class ICRes(torch.nn.Module):
         for i in range(blocks):
             in_channels = int(midlevel_feature_size / np.power(2, i))
             out_channels = int(midlevel_feature_size / np.power(2, i + 1))
+            print(in_channels, out_channels)
 
             layers.extend(
                 (
@@ -71,28 +74,6 @@ class ICRes(torch.nn.Module):
         )
 
         self.upsample = torch.nn.Sequential(*layers)
-
-        # second half: upsampling
-        # self.upsample = torch.nn.Sequential(
-        #     torch.nn.Conv2d(
-        #         midlevel_feature_size, 128, kernel_size=3, stride=1, padding=1
-        #     ),
-        #     torch.nn.BatchNorm2d(128),
-        #     torch.nn.ReLU(),
-        #     torch.nn.Upsample(scale_factor=2),
-        #     torch.nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),
-        #     torch.nn.BatchNorm2d(64),
-        #     torch.nn.ReLU(),
-        #     torch.nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-        #     torch.nn.BatchNorm2d(64),
-        #     torch.nn.ReLU(),
-        #     torch.nn.Upsample(scale_factor=2),
-        #     torch.nn.Conv2d(64, 32, kernel_size=3, stride=1, padding=1),
-        #     torch.nn.BatchNorm2d(32),
-        #     torch.nn.ReLU(),
-        #     torch.nn.Conv2d(32, 2, kernel_size=3, stride=1, padding=1),
-        #     torch.nn.Upsample(scale_factor=2),
-        # )
 
     def forward(self, output):
         # add dim to input if wrong dimension

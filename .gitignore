@@ -4,7 +4,7 @@ weights/
 slices/
 channels/
 _misc/
-data/
+image/
 *.png
 *.jpg
 *.bmp

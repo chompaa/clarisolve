@@ -29,7 +29,7 @@ from super_resolve import super_resolve
 
 
 class FolderSelector(QGroupBox):
-    def __init__(self, title, default_path):
+    def __init__(self, title, placeholder_text, default_path=None):
         super(QGroupBox, self).__init__()
 
         self.setTitle(title)
@@ -37,7 +37,10 @@ class FolderSelector(QGroupBox):
         layout = QHBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.path_input = QLineEdit(default_path + "/")
+        self.path_input = QLineEdit()
+        self.path_input.setPlaceholderText(placeholder_text)
+        if default_path:
+            self.path_input.setText(default_path)
 
         select_folder = QPushButton("Choose Folder")
         select_folder.clicked.connect(self.select_folder)
@@ -189,7 +192,9 @@ class MainWindow(QMainWindow):
             "PyTorch State Dictionary Files *.pth",
         )
         self.output_selector = FolderSelector(
-            "Output folder", abspath("./output").replace("\\", "/")
+            "Output folder",
+            "Path to output folder.."
+            # abspath("./output").replace("\\", "/")
         )
         self.input_selector = ImageSelector(190, 190)
 

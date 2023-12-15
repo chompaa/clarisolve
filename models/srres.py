@@ -33,7 +33,7 @@ class SRRes(torch.nn.Module):
         self.relu = torch.nn.ReLU(inplace=True)
 
     def make_layer(self, block, num_blocks, num_channels):
-        layers = [block(num_channels) for _ in range(num_blocks)]
+        layers = [block() for _ in range(num_blocks)]
 
         return torch.nn.Sequential(*layers)
 

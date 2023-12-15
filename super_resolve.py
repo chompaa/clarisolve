@@ -91,6 +91,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", choices=model_list.keys(), required=True)
     parser.add_argument("--weights-file", type=str, required=True)
     parser.add_argument("--image-file", type=str, required=True)
+    parser.add_argument("--output-dir", type=str, default="")
     parser.add_argument("--scale", type=int, default=2)
     parser.add_argument("--upscale", action="store_true", default=True)
     args = parser.parse_args()
@@ -98,7 +99,7 @@ if __name__ == "__main__":
     super_resolve(
         model_list[args.model](),
         args.weights_file,
-        "",
+        args.output_dir,
         args.image_file,
         args.scale,
         args.upscale,
